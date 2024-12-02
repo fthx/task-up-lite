@@ -62,9 +62,10 @@ class TaskButton extends PanelMenu.Button {
             'workspace-changed', this._updateVisibility.bind(this),
             this);
 
-        this.connectObject('notify::hover', this._onHover.bind(this),
+        this.connectObject(
+            'notify::hover', this._onHover.bind(this),
             'button-press-event', this._onClicked.bind(this),
-            'scroll-event', this._onScrollEvent.bind(this),
+            'scroll-event', this._onScroll.bind(this),
             'destroy', this._onDestroy.bind(this),
             this);
     }
