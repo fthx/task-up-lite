@@ -62,9 +62,9 @@ class TaskButton extends PanelMenu.Button {
             'workspace-changed', this._updateVisibility.bind(this),
             this);
 
-        this.connectObject(
+        this.connectObject('notify::hover', this._onHover.bind(this),
             'button-press-event', this._onClicked.bind(this),
-            'notify::hover', this._onHover.bind(this),
+            'scroll-event', this._onScrollEvent.bind(this),
             'destroy', this._onDestroy.bind(this),
             this);
     }
@@ -101,6 +101,21 @@ class TaskButton extends PanelMenu.Button {
         }
     }
 
+    _onScroll(actor, event) {
+        let activeWorkspace = global.workspace_manager.get_active_workspace();
+
+        switch(event.get_scroll_direction()) {
+            case Clutter.ScrollDirection.DOWN:
+            case Clutter.ScrollDirection.RIGHT:
+                activeWorkspace.get_neighbor(Meta.MotionDirection.RIGHT).activate(event.get_time());
+                break;
+            case Clutter.ScrollDirection.UP:
+            case Clutter.ScrollDirection.LEFT:
+                activeWorkspace.get_neighbor(Meta.MotionDirection.LEFT).activate(event.get_time());
+                break;
+        }
+    }
+
     _updateTitle() {
         this._label.set_text(this._window.get_title());
     }
@@ -123,7 +138,7 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _updateVisibility() {
-        let activeWorkspace = global.workspace_manager.get_active_workspace()
+        let activeWorkspace = global.workspace_manager.get_active_workspace();
         let windowIsOnActiveWorkspace = this._window.located_on_workspace(activeWorkspace);
 
         this.visible = !this._window.is_skip_taskbar() && windowIsOnActiveWorkspace;
