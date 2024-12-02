@@ -5,6 +5,7 @@
 
 .window-button > StWidget {
   spacing: 6px;
+  padding: 4px;
 
   -st-natural-width: 240px;
   min-width: 24px;
