@@ -65,7 +65,6 @@ class TaskButton extends PanelMenu.Button {
         this.connectObject(
             'notify::hover', this._onHover.bind(this),
             'button-press-event', this._onClicked.bind(this),
-            'scroll-event', this._onScroll.bind(this),
             'destroy', this._onDestroy.bind(this),
             this);
     }
@@ -99,21 +98,6 @@ class TaskButton extends PanelMenu.Button {
                 focusWindow.raise();
 
             return GLib.SOURCE_REMOVE;
-        }
-    }
-
-    _onScroll(actor, event) {
-        let activeWorkspace = global.workspace_manager.get_active_workspace();
-
-        switch(event.get_scroll_direction()) {
-            case Clutter.ScrollDirection.DOWN:
-            case Clutter.ScrollDirection.RIGHT:
-                activeWorkspace.get_neighbor(Meta.MotionDirection.RIGHT).activate(event.get_time());
-                break;
-            case Clutter.ScrollDirection.UP:
-            case Clutter.ScrollDirection.LEFT:
-                activeWorkspace.get_neighbor(Meta.MotionDirection.LEFT).activate(event.get_time());
-                break;
         }
     }
 
@@ -238,6 +222,7 @@ class TaskBar extends GObject.Object {
 
     _connectSignals() {
         global.display.connectObject('window-created', (display, window) => this._makeTaskButton(window), this);
+        Main.panel.connectObject('scroll-event', (actor, event) => Main.wm.handleWorkspaceScroll(event), this);
 
         Main.extensionManager.connectObject('extension-state-changed', () => this._showPlacesIcon(true), this);
     }
@@ -246,6 +231,7 @@ class TaskBar extends GObject.Object {
         Main.extensionManager.disconnectObject(this);
 
         global.display.disconnectObject(this);
+        Main.panel.disconnectObject(this);
     }
 
     _destroy() {
