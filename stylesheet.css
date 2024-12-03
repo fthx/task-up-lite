@@ -5,7 +5,8 @@
 
 .window-button > StWidget {
   spacing: 6px;
-  padding: 4px;
+  padding-left: 2px;
+  padding-right: 2px;
 
   -st-natural-width: 240px;
   min-width: 24px;
@@ -13,27 +14,16 @@
 }
 
 .window-focused {
-  margin-right: 3px;
-  margin-left: 3px;
-  margin-top: 0px;
-  margin-bottom: 0px;
-
-  border-radius: 6px;
-
-  background-color: rgba(255, 255, 255, 0.25);
+  margin: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
 
   transition-duration: 0.2s;
 }
 
 .window-unfocused {
-  margin-right: 3px;
-  margin-left: 3px;
-  margin-top: 0px;
-  margin-bottom: 0px;
-
-  border-radius: 6px;
-
-  background-color: rgba(255, 255, 255, 0.1);
+  margin: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 
   transition-duration: 0.2s;
 }
+

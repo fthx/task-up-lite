@@ -13,12 +13,9 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
-import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-
-const ICON_SIZE = 18; // px
+const ICON_SIZE = 16; // px
 const WINDOW_RAISE_DELAY = 750; // ms
-
 
 const TaskButton = GObject.registerClass(
 class TaskButton extends PanelMenu.Button {
@@ -28,7 +25,6 @@ class TaskButton extends PanelMenu.Button {
         this._window = window;
         this._workspaceIndex = this._window.get_workspace().index();
 
-        this.add_style_class_name('window-button');
         this._box = new St.BoxLayout({style_class: 'panel-button'});
 
         this._icon = new St.Icon();
@@ -39,6 +35,7 @@ class TaskButton extends PanelMenu.Button {
         this._label = new St.Label({y_align: Clutter.ActorAlign.CENTER});
         this._box.add_child(this._label);
 
+        this.add_style_class_name('window-button');
         this.add_child(this._box);
 
         this._updateTitle();
@@ -171,8 +168,8 @@ class TaskBar extends GObject.Object {
     }
 
     _makeTaskbar() {
-        this._showPlacesIcon(true);
         this._moveDate(true);
+        this._movePlacesMenu(true);
 
         this._makeTaskbarTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
             let workspacesNumber = global.workspace_manager.n_workspaces;
@@ -189,19 +186,19 @@ class TaskBar extends GObject.Object {
         });
     }
 
-    _showPlacesIcon(show) {
+    _movePlacesMenu(active) {
         let placesIndicator = Main.panel.statusArea['places-menu'];
+        if (!placesIndicator)
+            return;
 
-        if (placesIndicator) {
-            placesIndicator.remove_child(placesIndicator.first_child);
+        let placesIndicatorBin = placesIndicator.get_parent();
 
-            if (show) {
-                let placesIcon = new St.Icon({icon_name: 'folder-symbolic', style_class: 'system-status-icon'});
-                placesIndicator.add_child(placesIcon);
-            } else {
-                let placesLabel = new St.Label({text: _('Places'), y_expand: true, y_align: Clutter.ActorAlign.CENTER});
-                placesIndicator.add_child(placesLabel);
-            }
+        if (active) {
+            Main.panel._leftBox.remove_child(placesIndicatorBin);
+            Main.panel._rightBox.insert_child_at_index(placesIndicatorBin, 0);
+        } else {
+            Main.panel._rightBox.remove_child(placesIndicatorBin);
+            Main.panel._leftBox.add_child(placesIndicatorBin);
         }
     }
 
@@ -224,7 +221,7 @@ class TaskBar extends GObject.Object {
         global.display.connectObject('window-created', (display, window) => this._makeTaskButton(window), this);
         Main.panel.connectObject('scroll-event', (actor, event) => Main.wm.handleWorkspaceScroll(event), this);
 
-        Main.extensionManager.connectObject('extension-state-changed', () => this._showPlacesIcon(true), this);
+        Main.extensionManager.connectObject('extension-state-changed', () => this._movePlacesMenu(true), this);
     }
 
     _disconnectSignals() {
@@ -244,16 +241,12 @@ class TaskBar extends GObject.Object {
         this._destroyTaskbar();
 
         Main.panel._leftBox.remove_style_class_name('leftbox-reduced-padding');
-        this._showPlacesIcon(false);
         this._moveDate(false);
+        this._movePlacesMenu(false);
     }
 });
 
-export default class TaskUpLiteExtension extends Extension {
-    constructor(metadata) {
-        super(metadata);
-    }
-
+export default class TaskUpLiteExtension {
     enable() {
         this._taskbar = new TaskBar();
     }

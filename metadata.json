@@ -1,5 +1,5 @@
 {
-  "description": "Just a task bar, Task Up lite edition.\n\n Very light extension. You can scroll on panel to change active workspace.\n\n See Task Up for more specs and some settings.",
+  "description": "Just a task bar, Task Up lite edition.\n\n Very light extension. You can scroll on panel to change active workspace.\n\n See Task Up extension for more specs and some settings.",
   "name": "Task Up Lite",
   "shell-version": ["46", "47"],
   "url": "https://github.com/fthx/task-up-lite",
