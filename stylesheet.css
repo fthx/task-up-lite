@@ -5,12 +5,12 @@
 
 .window-button > StWidget {
   spacing: 6px;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-left: 6px;
+  padding-right: 6px;
 
-  -st-natural-width: 240px;
+  -st-natural-width: 360px;
   min-width: 24px;
-  max-width: 240px;
+  max-width: 360px;
 }
 
 .label-focused {
