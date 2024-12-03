@@ -111,11 +111,11 @@ class TaskButton extends PanelMenu.Button {
 
     _updateFocus() {
         if (this._window.has_focus()) {
-            this.remove_style_class_name('window-unfocused');
-            this.add_style_class_name('window-focused');
+            this._label.remove_style_class_name('label-unfocused');
+            this._label.add_style_class_name('label-focused');
         } else {
-            this.remove_style_class_name('window-focused');
-            this.add_style_class_name('window-unfocused');
+            this._label.remove_style_class_name('label-focused');
+            this._label.add_style_class_name('label-unfocused');
         }
     }
 
@@ -194,9 +194,15 @@ class TaskBar extends GObject.Object {
         let placesIndicatorBin = placesIndicator.get_parent();
 
         if (active) {
+            if (!Main.panel._leftBox.get_children().includes(placesIndicatorBin))
+                return;
+
             Main.panel._leftBox.remove_child(placesIndicatorBin);
             Main.panel._rightBox.insert_child_at_index(placesIndicatorBin, 0);
         } else {
+            if (!Main.panel._rightBox.get_children().includes(placesIndicatorBin))
+                return;
+
             Main.panel._rightBox.remove_child(placesIndicatorBin);
             Main.panel._leftBox.add_child(placesIndicatorBin);
         }
