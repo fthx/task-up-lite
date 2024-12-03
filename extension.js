@@ -10,6 +10,7 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
+import { AppMenu } from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
@@ -38,6 +39,8 @@ class TaskButton extends PanelMenu.Button {
         this.add_style_class_name('window-button');
         this.add_child(this._box);
 
+        this.setMenu(new AppMenu(this));
+
         this._updateTitle();
         this._updateApp();
         this._updateFocus();
@@ -61,21 +64,26 @@ class TaskButton extends PanelMenu.Button {
 
         this.connectObject(
             'notify::hover', this._onHover.bind(this),
-            'button-press-event', this._onClicked.bind(this),
+            'button-press-event', (widget, event) => this._onClicked(event),
             'destroy', this._onDestroy.bind(this),
             this);
     }
 
-    _onClicked() {
-        if (this._window.has_focus()) {
-            if (this._window.can_minimize() && !Main.overview.visible)
-                this._window.minimize();
-        } else  {
-            this._window.activate(global.get_current_time());
-            this._window.focus(global.get_current_time());
-        }
+    _onClicked(event) {
+        if (event.get_button() == Clutter.BUTTON_PRIMARY) {
+            this.menu.close();
 
-        Main.overview.hide();
+            if (this._window.has_focus()) {
+                if (this._window.can_minimize() && !Main.overview.visible) {
+                    this._window.minimize();
+                }
+            } else  {
+                this._window.activate(global.get_current_time());
+                this._window.focus(global.get_current_time());
+            }
+
+            Main.overview.hide();
+        }
     }
 
     _onHover() {
@@ -105,8 +113,10 @@ class TaskButton extends PanelMenu.Button {
     _updateApp() {
         this._app = Shell.WindowTracker.get_default().get_window_app(this._window);
 
-        if (this._app)
+        if (this._app) {
             this._icon.set_gicon(this._app.get_icon());
+            this.menu.setApp(this._app);
+        }
     }
 
     _updateFocus() {
