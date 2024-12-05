@@ -93,16 +93,16 @@ class TaskButton extends PanelMenu.Button {
         if (this.get_hover()) {
             this._raiseWindowTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_RAISE_DELAY, () => {
                 if (this.get_hover())
-                        this._window.raise();
+                    this._window.raise();
 
+                this._raiseWindowTimeout = null;
                 return GLib.SOURCE_REMOVE;
             });
         } else {
             let focusWindow = global.display.get_focus_window();
+
             if (focusWindow)
                 focusWindow.raise();
-
-            return GLib.SOURCE_REMOVE;
         }
     }
 
@@ -122,9 +122,7 @@ class TaskButton extends PanelMenu.Button {
     _updateFocus() {
         if (this._window.has_focus()) {
             this._label.remove_style_class_name('label-unfocused');
-            this._label.add_style_class_name('label-focused');
         } else {
-            this._label.remove_style_class_name('label-focused');
             this._label.add_style_class_name('label-unfocused');
         }
     }
@@ -137,10 +135,7 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _onDestroy() {
-        if (this._raiseWindowTimeout) {
-            GLib.source_remove(this._raiseWindowTimeout);
-            this._raiseWindowTimeout = null;
-        }
+        this._raiseWindowTimeout = null;
 
         global.workspace_manager.disconnectObject(this);
         if (this._window)
@@ -248,10 +243,7 @@ class TaskBar extends GObject.Object {
     }
 
     _destroy() {
-        if (this._makeTaskbarTimeout) {
-            GLib.source_remove(this._makeTaskbarTimeout);
-            this._makeTaskbarTimeout = null;
-        }
+        this._makeTaskbarTimeout = null;
 
         this._disconnectSignals();
         this._destroyTaskbar();
