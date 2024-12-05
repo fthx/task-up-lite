@@ -135,7 +135,10 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _onDestroy() {
-        this._raiseWindowTimeout = null;
+        if (this._raiseWindowTimeout) {
+            GLib.Source.remove(this._raiseWindowTimeout);
+            this._raiseWindowTimeout = null;
+        }
 
         global.workspace_manager.disconnectObject(this);
         if (this._window)
@@ -243,7 +246,10 @@ class TaskBar extends GObject.Object {
     }
 
     _destroy() {
-        this._makeTaskbarTimeout = null;
+        if (this._makeTaskbarTimeout) {
+            GLib.Source.remove(this._makeTaskbarTimeout);
+            this._makeTaskbarTimeout = null;
+        }
 
         this._disconnectSignals();
         this._destroyTaskbar();
