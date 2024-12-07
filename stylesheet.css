@@ -12,7 +12,3 @@
   min-width: 24px;
   max-width: 360px;
 }
-
-.label-unfocused {
-  color: rgba(255, 255, 255, 0.5);
-}

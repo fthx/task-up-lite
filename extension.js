@@ -15,8 +15,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 
-const ICON_SIZE = 16; // px
 const WINDOW_RAISE_DELAY = 750; // ms
+const UNFOCUSED_BUTTON_OPACITY = 0.5; // 0...1
 
 const TaskButton = GObject.registerClass(
 class TaskButton extends PanelMenu.Button {
@@ -29,7 +29,7 @@ class TaskButton extends PanelMenu.Button {
         this._box = new St.BoxLayout({style_class: 'panel-button'});
 
         this._icon = new St.Icon();
-        this._icon.set_icon_size(ICON_SIZE);
+        this._icon.set_icon_size(Main.panel.height / 2);
         this._icon.set_fallback_gicon(null);
         this._box.add_child(this._icon);
 
@@ -83,7 +83,11 @@ class TaskButton extends PanelMenu.Button {
             }
 
             Main.overview.hide();
+
+            return Clutter.EVENT_STOP;
         }
+
+        return Clutter.EVENT_PROPAGATE;
     }
 
     _onHover() {
@@ -120,11 +124,10 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _updateFocus() {
-        if (this._window.has_focus()) {
-            this._label.remove_style_class_name('label-unfocused');
-        } else {
-            this._label.add_style_class_name('label-unfocused');
-        }
+        if (this._window.has_focus())
+            this.set_opacity(255);
+        else
+            this.set_opacity(UNFOCUSED_BUTTON_OPACITY * 255);
     }
 
     _updateVisibility() {
