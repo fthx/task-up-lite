@@ -1,12 +1,8 @@
-.leftbox-reduced-padding .panel-button {
-  /*-natural-hpadding: 4px;*/
-  -minimum-hpadding: 2px;
-}
-
 .window-button > StWidget {
   spacing: 6px;
-  padding-left: 6px;
-  padding-right: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
+  -minimum-hpadding: 0px;
 
   -st-natural-width: 360px;
   min-width: 24px;

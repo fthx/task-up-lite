@@ -12,16 +12,19 @@ import St from 'gi://St';
 
 import { AppMenu } from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/overview.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 
 const WINDOW_RAISE_DELAY = 750; // ms
-const UNFOCUSED_BUTTON_OPACITY = 0.5; // 0...1
+const UNFOCUSED_BUTTON_OPACITY = 128; // 0...255
 
 const TaskButton = GObject.registerClass(
 class TaskButton extends PanelMenu.Button {
     _init(window) {
         super._init();
+
+        this.set_opacity(0);
 
         this._window = window;
         this._workspaceIndex = this._window.get_workspace().index();
@@ -36,21 +39,31 @@ class TaskButton extends PanelMenu.Button {
         this._label = new St.Label({y_align: Clutter.ActorAlign.CENTER});
         this._box.add_child(this._label);
 
-        this.add_style_class_name('window-button');
         this.add_child(this._box);
 
         this.setMenu(new AppMenu(this));
 
-        this._updateTitle();
         this._updateApp();
         this._updateFocus();
+        this._updateTitle();
         this._updateVisibility();
 
         this._id = 'task-button-' + this._window;
         if (!Main.panel.statusArea[this._id])
             Main.panel.addToStatusArea(this._id, this, -1, 'left');
 
+        this.remove_all_transitions();
+        this.ease({
+            opacity: 255,
+            duration: 2 * ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
+
         global.workspace_manager.connectObject('active-workspace-changed', this._updateVisibility.bind(this), this);
+        Main.overview.connectObject(
+            'showing', () => this.hide(),
+            'hiding', () => this.show(),
+            this);
 
         this._window.connectObject(
             'notify::appears-focused', this._updateFocus.bind(this),
@@ -58,15 +71,24 @@ class TaskButton extends PanelMenu.Button {
             'notify::wm-class', this._updateApp.bind(this), GObject.ConnectFlags.AFTER,
             'notify::gtk-application-id', this._updateApp.bind(this), GObject.ConnectFlags.AFTER,
             'notify::skip-taskbar', this._updateVisibility.bind(this),
-            'unmanaging', this._onDestroy.bind(this),
             'workspace-changed', this._updateVisibility.bind(this),
+            'unmanaging', this._destroy.bind(this),
             this);
 
         this.connectObject(
             'notify::hover', this._onHover.bind(this),
             'button-press-event', (widget, event) => this._onClicked(event),
-            'destroy', this._onDestroy.bind(this),
+            'style-changed', this._onStyleChanged.bind(this), GObject.ConnectFlags.AFTER,
             this);
+    }
+
+    _onStyleChanged() {
+        if (this._styleChanged)
+            return;
+
+        this.add_style_class_name('window-button');
+
+        this._styleChanged = true;
     }
 
     _onClicked(event) {
@@ -74,9 +96,8 @@ class TaskButton extends PanelMenu.Button {
             this.menu.close();
 
             if (this._window.has_focus()) {
-                if (this._window.can_minimize() && !Main.overview.visible) {
+                if (this._window.can_minimize() && !Main.overview.visible)
                     this._window.minimize();
-                }
             } else  {
                 this._window.activate(global.get_current_time());
                 this._window.focus(global.get_current_time());
@@ -110,6 +131,13 @@ class TaskButton extends PanelMenu.Button {
         }
     }
 
+    _updateFocus() {
+        if (this._window.has_focus())
+            this._box.set_opacity(255);
+        else
+            this._box.set_opacity(UNFOCUSED_BUTTON_OPACITY);
+    }
+
     _updateTitle() {
         this._label.set_text(this._window.get_title());
     }
@@ -123,13 +151,6 @@ class TaskButton extends PanelMenu.Button {
         }
     }
 
-    _updateFocus() {
-        if (this._window.has_focus())
-            this.set_opacity(255);
-        else
-            this.set_opacity(UNFOCUSED_BUTTON_OPACITY * 255);
-    }
-
     _updateVisibility() {
         let activeWorkspace = global.workspace_manager.get_active_workspace();
         let windowIsOnActiveWorkspace = this._window.located_on_workspace(activeWorkspace);
@@ -137,25 +158,38 @@ class TaskButton extends PanelMenu.Button {
         this.visible = !this._window.is_skip_taskbar() && windowIsOnActiveWorkspace;
     }
 
-    _onDestroy() {
+    _destroy() {
         if (this._raiseWindowTimeout) {
             GLib.Source.remove(this._raiseWindowTimeout);
             this._raiseWindowTimeout = null;
         }
 
         global.workspace_manager.disconnectObject(this);
+        Main.overview.disconnectObject(this);
+
         if (this._window)
             this._window.disconnectObject(this);
 
-        super.destroy();
+        this.remove_all_transitions();
+        this.ease({
+            opacity: 0,
+            duration: ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+                this.ease({
+                    width: 0,
+                    duration: ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    onComplete: () => this.destroy(),
+                });
+            }
+        });
     }
 });
 
 const TaskBar = GObject.registerClass(
 class TaskBar extends GObject.Object {
     _init() {
-        Main.panel._leftBox.add_style_class_name('leftbox-reduced-padding');
-
         this._makeTaskbar();
         this._connectSignals();
     }
@@ -172,7 +206,7 @@ class TaskBar extends GObject.Object {
             let button = bin.first_child;
 
             if (button instanceof TaskButton) {
-                button.destroy();
+                button._destroy();
                 button = null;
             }
         }
