@@ -24,8 +24,6 @@ class TaskButton extends PanelMenu.Button {
     _init(window) {
         super._init();
 
-        this.set_opacity(0);
-
         this._window = window;
         this._workspaceIndex = this._window.get_workspace().index();
 
@@ -38,6 +36,10 @@ class TaskButton extends PanelMenu.Button {
 
         this._buttonEaseIn();
 
+        this._connectSignals();
+    }
+
+    _connectSignals() {
         global.workspace_manager.connectObject('active-workspace-changed', this._updateVisibility.bind(this), this);
         Main.overview.connectObject(
             'showing', () => this.hide(),
@@ -61,6 +63,14 @@ class TaskButton extends PanelMenu.Button {
             this);
     }
 
+    _disconnectSignals() {
+        global.workspace_manager.disconnectObject(this);
+        Main.overview.disconnectObject(this);
+
+        if (this._window)
+            this._window.disconnectObject(this);
+    }
+
     _makeButtonBox() {
         this._box = new St.BoxLayout({style_class: 'panel-button'});
 
@@ -78,6 +88,8 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _buttonEaseIn() {
+        this.set_opacity(0);
+
         this._id = 'task-button-' + this._window;
         if (!Main.panel.statusArea[this._id])
             Main.panel.addToStatusArea(this._id, this, -1, 'left');
@@ -87,6 +99,23 @@ class TaskButton extends PanelMenu.Button {
             opacity: 255,
             duration: 2 * ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        });
+    }
+
+    _buttonEaseOutAndDestroy() {
+        this.remove_all_transitions();
+        this.ease({
+            opacity: 0,
+            duration: ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+                this.ease({
+                    width: 0,
+                    duration: ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    onComplete: () => this.destroy(),
+                });
+            }
         });
     }
 
@@ -125,13 +154,11 @@ class TaskButton extends PanelMenu.Button {
 
         if (this.get_hover()) {
             this._raiseWindowTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_RAISE_DELAY, () => {
-                if (this) {
-                    if (this.get_hover())
-                        this._window.raise();
+                if (this.get_hover())
+                    this._window.raise();
 
-                    this._raiseWindowTimeout = null;
-                }
-                
+                this._raiseWindowTimeout = null;
+
                 return GLib.SOURCE_REMOVE;
             });
         } else {
@@ -175,26 +202,9 @@ class TaskButton extends PanelMenu.Button {
             this._raiseWindowTimeout = null;
         }
 
-        global.workspace_manager.disconnectObject(this);
-        Main.overview.disconnectObject(this);
+        this._disconnectSignals();
 
-        if (this._window)
-            this._window.disconnectObject(this);
-
-        this.remove_all_transitions();
-        this.ease({
-            opacity: 0,
-            duration: ANIMATION_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            onComplete: () => {
-                this.ease({
-                    width: 0,
-                    duration: ANIMATION_TIME,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                    onComplete: () => this.destroy(),
-                });
-            }
-        });
+        this._buttonEaseOutAndDestroy();
     }
 });
 
@@ -294,17 +304,18 @@ class TaskBar extends GObject.Object {
     }
 
     _destroy() {
+        this._disconnectSignals();
+
         if (this._makeTaskbarTimeout) {
             GLib.Source.remove(this._makeTaskbarTimeout);
             this._makeTaskbarTimeout = null;
         }
 
-        this._disconnectSignals();
         this._destroyTaskbar();
 
         Main.panel._leftBox.remove_style_class_name('leftbox-reduced-padding');
-        this._moveDate(false);
         this._movePlacesMenu(false);
+        this._moveDate(false);
     }
 });
 
