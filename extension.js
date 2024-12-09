@@ -29,40 +29,19 @@ class TaskButton extends PanelMenu.Button {
         this._window = window;
         this._workspaceIndex = this._window.get_workspace().index();
 
-        this._box = new St.BoxLayout({style_class: 'panel-button'});
-
-        this._icon = new St.Icon();
-        this._icon.set_icon_size(Main.panel.height / 2);
-        this._icon.set_fallback_gicon(null);
-        this._box.add_child(this._icon);
-
-        this._label = new St.Label({y_align: Clutter.ActorAlign.CENTER});
-        this._box.add_child(this._label);
-
-        this.add_child(this._box);
-
-        this.setMenu(new AppMenu(this));
+        this._makeButtonBox();
 
         this._updateApp();
         this._updateFocus();
         this._updateTitle();
         this._updateVisibility();
 
-        this._id = 'task-button-' + this._window;
-        if (!Main.panel.statusArea[this._id])
-            Main.panel.addToStatusArea(this._id, this, -1, 'left');
-
-        this.remove_all_transitions();
-        this.ease({
-            opacity: 255,
-            duration: 2 * ANIMATION_TIME,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
+        this._buttonEaseIn();
 
         global.workspace_manager.connectObject('active-workspace-changed', this._updateVisibility.bind(this), this);
         Main.overview.connectObject(
             'showing', () => this.hide(),
-            'hiding', () => this.show(),
+            'hidden', this._updateVisibility.bind(this),
             this);
 
         this._window.connectObject(
@@ -80,6 +59,35 @@ class TaskButton extends PanelMenu.Button {
             'button-press-event', (widget, event) => this._onClicked(event),
             'style-changed', this._onStyleChanged.bind(this), GObject.ConnectFlags.AFTER,
             this);
+    }
+
+    _makeButtonBox() {
+        this._box = new St.BoxLayout({style_class: 'panel-button'});
+
+        this._icon = new St.Icon();
+        this._icon.set_icon_size(Main.panel.height / 2);
+        this._icon.set_fallback_gicon(null);
+        this._box.add_child(this._icon);
+
+        this._label = new St.Label({y_align: Clutter.ActorAlign.CENTER});
+        this._box.add_child(this._label);
+
+        this.add_child(this._box);
+
+        this.setMenu(new AppMenu(this));
+    }
+
+    _buttonEaseIn() {
+        this._id = 'task-button-' + this._window;
+        if (!Main.panel.statusArea[this._id])
+            Main.panel.addToStatusArea(this._id, this, -1, 'left');
+
+        this.remove_all_transitions();
+        this.ease({
+            opacity: 255,
+            duration: 2 * ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        });
     }
 
     _onStyleChanged() {
@@ -117,10 +125,13 @@ class TaskButton extends PanelMenu.Button {
 
         if (this.get_hover()) {
             this._raiseWindowTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_RAISE_DELAY, () => {
-                if (this.get_hover())
-                    this._window.raise();
+                if (this) {
+                    if (this.get_hover())
+                        this._window.raise();
 
-                this._raiseWindowTimeout = null;
+                    this._raiseWindowTimeout = null;
+                }
+                
                 return GLib.SOURCE_REMOVE;
             });
         } else {
@@ -155,7 +166,7 @@ class TaskButton extends PanelMenu.Button {
         let activeWorkspace = global.workspace_manager.get_active_workspace();
         let windowIsOnActiveWorkspace = this._window.located_on_workspace(activeWorkspace);
 
-        this.visible = !this._window.is_skip_taskbar() && windowIsOnActiveWorkspace;
+        this.visible = !Main.overview.visible && !this._window.is_skip_taskbar() && windowIsOnActiveWorkspace;
     }
 
     _destroy() {
