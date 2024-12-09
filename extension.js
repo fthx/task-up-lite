@@ -59,7 +59,6 @@ class TaskButton extends PanelMenu.Button {
         this.connectObject(
             'notify::hover', this._onHover.bind(this),
             'button-press-event', (widget, event) => this._onClicked(event),
-            'style-changed', this._onStyleChanged.bind(this), GObject.ConnectFlags.AFTER,
             this);
     }
 
@@ -99,6 +98,7 @@ class TaskButton extends PanelMenu.Button {
             opacity: 255,
             duration: 2 * ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            onComplete: () => this.add_style_class_name('window-button'),
         });
     }
 
@@ -117,15 +117,6 @@ class TaskButton extends PanelMenu.Button {
                 });
             }
         });
-    }
-
-    _onStyleChanged() {
-        if (this._styleChanged)
-            return;
-
-        this.add_style_class_name('window-button');
-
-        this._styleChanged = true;
     }
 
     _onClicked(event) {
