@@ -7,3 +7,7 @@
   min-width: 24px;
   max-width: 360px;
 }
+
+.window-thumbnail {
+  border-radius: 10px;
+}

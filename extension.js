@@ -16,7 +16,9 @@ import { ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/overview.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 
-const WINDOW_RAISE_DELAY = 750; // ms
+const WINDOW_THUMBNAIL_RAISE_DELAY = 500; // ms
+const WINDOW_THUMBNAIL_SIZE_RATIO = 0.25; // 0...1
+const WINDOW_THUMBNAIL_Y_OFFSET = 6; // px
 const UNFOCUSED_BUTTON_OPACITY = 128; // 0...255
 
 const TaskButton = GObject.registerClass(
@@ -115,7 +117,7 @@ class TaskButton extends PanelMenu.Button {
                     mode: Clutter.AnimationMode.EASE_OUT_QUAD,
                     onComplete: () => this.destroy(),
                 });
-            }
+            },
         });
     }
 
@@ -125,6 +127,8 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _onClicked(event) {
+        this._removeWindowThumbnail();
+
         if (event.get_button() == Clutter.BUTTON_PRIMARY) {
             this.menu.close();
 
@@ -144,23 +148,89 @@ class TaskButton extends PanelMenu.Button {
         return Clutter.EVENT_PROPAGATE;
     }
 
+    _makeWindowThumbnail() {
+        let windowActor = this._window.get_compositor_private();
+        if (!windowActor)
+            return;
+
+        let [buttonX, buttonY] = this.get_transformed_position();
+        let [windowWidth, windowHeight] = windowActor.get_size();
+
+        let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+
+        let thumbnailMaxLength, thumbnailWidth, thumbnailHeight;
+        if (windowWidth > windowHeight) {
+            thumbnailMaxLength = workArea.width * WINDOW_THUMBNAIL_SIZE_RATIO;
+            thumbnailWidth = thumbnailMaxLength;
+            thumbnailHeight = thumbnailWidth * windowHeight / windowWidth;
+        } else {
+            thumbnailMaxLength = workArea.height * WINDOW_THUMBNAIL_SIZE_RATIO;
+            thumbnailHeight = thumbnailMaxLength;
+            thumbnailWidth = thumbnailHeight * windowWidth / windowHeight;
+        }
+
+        let windowClone = new Clutter.Clone({
+            source: windowActor,
+            width: thumbnailWidth,
+            height: thumbnailHeight,
+        });
+
+        this._windowThumbnail = new St.Widget({
+            style_class: 'window-thumbnail',
+            x: buttonX,
+            y: buttonY + Main.panel.height + WINDOW_THUMBNAIL_Y_OFFSET,
+            opacity: 0,
+        });
+        this._windowThumbnail.add_child(windowClone);
+
+        Main.uiGroup.add_child(this._windowThumbnail);
+
+        this._windowThumbnail.ease({
+            opacity: 255,
+            duration: ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_IN_QUAD,
+        });
+    }
+
+    _removeWindowThumbnail() {
+        if (!this._windowThumbnail)
+            return;
+
+        this._windowThumbnail.ease({
+            opacity: 0,
+            duration: ANIMATION_TIME,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+                Main.uiGroup.remove_child(this._windowThumbnail);
+                this._windowThumbnail.destroy();
+                this._windowThumbnail = null;
+            },
+        });
+    }
+
+    _removeRaiseWindowThumbnailTimeout() {
+        if (this._raiseWindowThumbnailTimeout) {
+            GLib.Source.remove(this._raiseWindowThumbnailTimeout);
+            this._raiseWindowThumbnailTimeout = null;
+        }
+    }
+
     _onHover() {
         if (!this._window)
             return;
 
         if (this.get_hover()) {
-            this._raiseWindowTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_RAISE_DELAY, () => {
-                if (this.get_hover())
-                    this._window.raise();
+            this._raiseWindowThumbnailTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_THUMBNAIL_RAISE_DELAY, () => {
+                if (this.get_hover()) {
+                    if (!this._window.has_focus())
+                        this._makeWindowThumbnail();
+                }
 
-                this._raiseWindowTimeout = null;
-                return GLib.SOURCE_REMOVE;
+                this._removeRaiseWindowThumbnailTimeout();
             });
         } else {
-            let focusWindow = global.display.get_focus_window();
-
-            if (focusWindow)
-                focusWindow.raise();
+            this._removeRaiseWindowThumbnailTimeout();
+            this._removeWindowThumbnail();
         }
     }
 
@@ -192,10 +262,8 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _destroy() {
-        if (this._raiseWindowTimeout) {
-            GLib.Source.remove(this._raiseWindowTimeout);
-            this._raiseWindowTimeout = null;
-        }
+        this._removeRaiseWindowThumbnailTimeout();
+        this._removeWindowThumbnail();
 
         this._disconnectSignals();
 
