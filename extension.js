@@ -27,6 +27,7 @@ class TaskButton extends PanelMenu.Button {
         this._window = window;
         this._workspaceIndex = this._window.get_workspace().index();
 
+        this.add_style_class_name('window-button');
         this._makeButtonBox();
 
         this._updateApp();
@@ -98,7 +99,6 @@ class TaskButton extends PanelMenu.Button {
             opacity: 255,
             duration: 2 * ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            onComplete: () => this.add_style_class_name('window-button'),
         });
     }
 
@@ -117,6 +117,11 @@ class TaskButton extends PanelMenu.Button {
                 });
             }
         });
+    }
+
+    _onStyleChanged() {
+        // withdraw -minimum-hpadding change of original PanelMenu.Button function
+        // needed for the width-animation on destroy to not step at the end
     }
 
     _onClicked(event) {
@@ -149,7 +154,6 @@ class TaskButton extends PanelMenu.Button {
                     this._window.raise();
 
                 this._raiseWindowTimeout = null;
-
                 return GLib.SOURCE_REMOVE;
             });
         } else {
