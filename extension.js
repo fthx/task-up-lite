@@ -156,7 +156,7 @@ class TaskButton extends PanelMenu.Button {
         let [buttonX, buttonY] = this.get_transformed_position();
         let [windowWidth, windowHeight] = windowActor.get_size();
         const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
-        
+
         let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
 
         let cloneMaxLength, cloneWidth, cloneHeight;
@@ -184,7 +184,7 @@ class TaskButton extends PanelMenu.Button {
 
         this._windowThumbnail.add_child(windowClone);
 
-        Main.uiGroup.add_child(windowThumbnail);
+        Main.uiGroup.add_child(this._windowThumbnail);
 
         this._windowThumbnail.ease({
             opacity: 255,
