@@ -155,35 +155,36 @@ class TaskButton extends PanelMenu.Button {
 
         let [buttonX, buttonY] = this.get_transformed_position();
         let [windowWidth, windowHeight] = windowActor.get_size();
-
+        const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
+        
         let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
 
-        let thumbnailMaxLength, thumbnailWidth, thumbnailHeight;
+        let cloneMaxLength, cloneWidth, cloneHeight;
         if (windowWidth > windowHeight) {
-            thumbnailMaxLength = workArea.width * WINDOW_THUMBNAIL_SIZE_RATIO;
-            thumbnailWidth = thumbnailMaxLength;
-            thumbnailHeight = thumbnailWidth * windowHeight / windowWidth;
+            cloneMaxLength = workArea.width * WINDOW_THUMBNAIL_SIZE_RATIO;
+            cloneWidth = cloneMaxLength;
+            cloneHeight = cloneWidth * windowHeight / windowWidth;
         } else {
-            thumbnailMaxLength = workArea.height * WINDOW_THUMBNAIL_SIZE_RATIO;
-            thumbnailHeight = thumbnailMaxLength;
-            thumbnailWidth = thumbnailHeight * windowWidth / windowHeight;
+            cloneMaxLength = workArea.height * WINDOW_THUMBNAIL_SIZE_RATIO;
+            cloneHeight = cloneMaxLength;
+            cloneWidth = cloneHeight * windowWidth / windowHeight;
         }
 
         let windowClone = new Clutter.Clone({
             source: windowActor,
-            width: thumbnailWidth,
-            height: thumbnailHeight,
+            width: cloneWidth * scaleFactor,
+            height: cloneHeight * scaleFactor,
         });
 
         this._windowThumbnail = new St.Widget({
-            style_class: 'window-thumbnail',
             x: buttonX,
             y: buttonY + Main.panel.height + WINDOW_THUMBNAIL_Y_OFFSET,
             opacity: 0,
         });
+
         this._windowThumbnail.add_child(windowClone);
 
-        Main.uiGroup.add_child(this._windowThumbnail);
+        Main.uiGroup.add_child(windowThumbnail);
 
         this._windowThumbnail.ease({
             opacity: 255,
@@ -204,7 +205,7 @@ class TaskButton extends PanelMenu.Button {
                 Main.uiGroup.remove_child(this._windowThumbnail);
                 this._windowThumbnail.destroy();
                 this._windowThumbnail = null;
-            },
+            }
         });
     }
 
