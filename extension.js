@@ -6,20 +6,64 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Graphene from 'gi://Graphene';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import { AppMenu } from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { ANIMATION_TIME } from 'resource:///org/gnome/shell/ui/overview.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 
-const WINDOW_THUMBNAIL_RAISE_DELAY = 500; // ms
-const WINDOW_THUMBNAIL_SIZE_RATIO = 0.25; // 0...1
-const WINDOW_THUMBNAIL_Y_OFFSET = 6; // px
-const UNFOCUSED_BUTTON_OPACITY = 128; // 0...255
+const ANIMATION_TIME = 200;
+const THUMBNAIL_RAISE_DELAY = 500; // ms
+const THUMBNAIL_SCALE_FACTOR = 0.5; // 0...1
+const THUMBNAIL_MAX_WIDTH_FACTOR = 0.25; // 0...1
+const THUMBNAIL_Y_OFFSET = 6; // px
+const BUTTON_UNFOCUSED_OPACITY = 128; // 0...255
+
+const WindowThumbnail = GObject.registerClass(
+class WindowThumbnail extends Shell.WindowPreview {
+    _init(window) {
+        super._init()
+
+        this._window = window;
+        this._windowActor = this._window.get_compositor_private();
+        if (!this._windowActor)
+            return;
+
+        let windowContainer = new Clutter.Actor();
+        this.window_container = windowContainer;
+
+
+        windowContainer.layout_manager = new Shell.WindowPreviewLayout();
+        windowContainer.layout_manager.add_window(this._window);
+
+        this._label = new St.Label({
+            style_class: 'thumbnail-label',
+            text: this._window.get_title(),
+        });
+
+        this._label.add_constraint(new Clutter.AlignConstraint({
+            source: windowContainer,
+            align_axis: Clutter.AlignAxis.X_AXIS,
+            pivot_point: new Graphene.Point({x: 0.5, y: 0}),
+            factor: 0.5,
+        }));
+        this._label.add_constraint(new Clutter.AlignConstraint({
+            source: windowContainer,
+            align_axis: Clutter.AlignAxis.Y_AXIS,
+            pivot_point: new Graphene.Point({x: -1, y: 0}),
+            factor: 1,
+        }));
+
+        this.label_actor = this._label;
+
+        this.add_child(windowContainer);
+        this.add_child(this._label);
+    }
+});
 
 const TaskButton = GObject.registerClass(
 class TaskButton extends PanelMenu.Button {
@@ -149,63 +193,47 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _makeWindowThumbnail() {
-        let windowActor = this._window.get_compositor_private();
-        if (!windowActor)
-            return;
-
         let [buttonX, buttonY] = this.get_transformed_position();
-        let [windowWidth, windowHeight] = windowActor.get_size();
-        const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
 
-        let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+        this._thumbnail = new WindowThumbnail(this._window);
+        Main.uiGroup.add_child(this._thumbnail);
 
-        let cloneMaxLength, cloneWidth, cloneHeight;
-        if (windowWidth > windowHeight) {
-            cloneMaxLength = workArea.width * WINDOW_THUMBNAIL_SIZE_RATIO;
-            cloneWidth = cloneMaxLength;
-            cloneHeight = cloneWidth * windowHeight / windowWidth;
-        } else {
-            cloneMaxLength = workArea.height * WINDOW_THUMBNAIL_SIZE_RATIO;
-            cloneHeight = cloneMaxLength;
-            cloneWidth = cloneHeight * windowWidth / windowHeight;
-        }
+        let scaleThreshold = THUMBNAIL_MAX_WIDTH_FACTOR * Main.panel.width / this._thumbnail.width;
+        let scale = Math.min(THUMBNAIL_SCALE_FACTOR, scaleThreshold);
+        this._thumbnail.set_size(this._thumbnail.width * scale, this._thumbnail.height * scale);
 
-        let windowClone = new Clutter.Clone({
-            source: windowActor,
-            width: cloneWidth * scaleFactor,
-            height: cloneHeight * scaleFactor,
-        });
+        this._thumbnail.x = buttonX;
+        this._thumbnail.y = buttonY + Main.panel.height + THUMBNAIL_Y_OFFSET;
 
-        this._windowThumbnail = new St.Widget({
-            x: buttonX,
-            y: buttonY + Main.panel.height + WINDOW_THUMBNAIL_Y_OFFSET,
-            opacity: 0,
-        });
+        this._thumbnail.set_opacity(0);
+        this._thumbnail.set_scale(0, 0);
 
-        this._windowThumbnail.add_child(windowClone);
-
-        Main.uiGroup.add_child(this._windowThumbnail);
-
-        this._windowThumbnail.ease({
+        this._thumbnail.remove_all_transitions();
+        this._thumbnail.ease({
             opacity: 255,
+            scale_x: 1,
+            scale_y: 1,
             duration: ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
         });
     }
 
     _removeWindowThumbnail() {
-        if (!this._windowThumbnail)
+        if (!this._thumbnail)
             return;
 
-        this._windowThumbnail.ease({
+        this._thumbnail.remove_all_transitions();
+        this._thumbnail.ease({
             opacity: 0,
+            scale_x: 0,
+            scale_y: 0,
             duration: ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             onComplete: () => {
-                Main.uiGroup.remove_child(this._windowThumbnail);
-                this._windowThumbnail.destroy();
-                this._windowThumbnail = null;
-            }
+                Main.uiGroup.remove_child(this._thumbnail);
+                this._thumbnail.destroy();
+                this._thumbnail = null;
+            },
         });
     }
 
@@ -221,7 +249,7 @@ class TaskButton extends PanelMenu.Button {
             return;
 
         if (this.get_hover()) {
-            this._raiseWindowThumbnailTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WINDOW_THUMBNAIL_RAISE_DELAY, () => {
+            this._raiseWindowThumbnailTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, THUMBNAIL_RAISE_DELAY, () => {
                 if (this.get_hover()) {
                     if (!this._window.has_focus())
                         this._makeWindowThumbnail();
@@ -236,14 +264,41 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _updateFocus() {
-        if (this._window.has_focus())
-            this._box.set_opacity(255);
-        else
-            this._box.set_opacity(UNFOCUSED_BUTTON_OPACITY);
+        this._box.remove_all_transitions();
+        if (this._window.has_focus()) {
+            this._box.ease({
+                opacity: 255,
+                duration: ANIMATION_TIME,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+            });
+        } else {
+            this._box.ease({
+                opacity: BUTTON_UNFOCUSED_OPACITY,
+                duration: ANIMATION_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        }
     }
 
     _updateTitle() {
-        this._label.set_text(this._window.get_title());
+        this._label.remove_all_transitions();
+        if (this._label.text) {
+            this._label.ease({
+                opacity: 0,
+                duration: ANIMATION_TIME,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                onComplete: () => {
+                    this._label.set_text(this._window.get_title());
+                    this._label.ease({
+                        opacity: 255,
+                        duration: ANIMATION_TIME,
+                        mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                    });
+                },
+            });
+        } else {
+            this._label.set_text(this._window.get_title());
+        }
     }
 
     _updateApp() {
