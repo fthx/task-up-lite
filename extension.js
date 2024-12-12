@@ -21,7 +21,7 @@ const THUMBNAIL_RAISE_DELAY = 500; // ms
 const THUMBNAIL_SCALE_FACTOR = 0.5; // 0...1
 const THUMBNAIL_MAX_WIDTH_FACTOR = 0.25; // 0...1
 const THUMBNAIL_Y_OFFSET = 6; // px
-const BUTTON_UNFOCUSED_OPACITY = 128; // 0...255
+const UNFOCUSED_OPACITY = 128; // 0...255
 
 const WindowThumbnail = GObject.registerClass(
 class WindowThumbnail extends Shell.WindowPreview {
@@ -71,6 +71,7 @@ class TaskButton extends PanelMenu.Button {
         super._init();
 
         this._window = window;
+        this._windowActor = this._window.get_compositor_private();
         this._workspaceIndex = this._window.get_workspace().index();
 
         this.add_style_class_name('window-button');
@@ -105,7 +106,7 @@ class TaskButton extends PanelMenu.Button {
 
         this.connectObject(
             'notify::hover', this._onHover.bind(this),
-            'button-press-event', (widget, event) => this._onClicked(event),
+            'button-press-event', (widget, event) => this._onClick(event),
             this);
     }
 
@@ -165,33 +166,6 @@ class TaskButton extends PanelMenu.Button {
         });
     }
 
-    _onStyleChanged() {
-        // withdraw -minimum-hpadding change of original PanelMenu.Button function
-        // needed for the width-animation on destroy to not step at the end
-    }
-
-    _onClicked(event) {
-        this._removeWindowThumbnail();
-
-        if (event.get_button() == Clutter.BUTTON_PRIMARY) {
-            this.menu.close();
-
-            if (this._window.has_focus()) {
-                if (this._window.can_minimize() && !Main.overview.visible)
-                    this._window.minimize();
-            } else  {
-                this._window.activate(global.get_current_time());
-                this._window.focus(global.get_current_time());
-            }
-
-            Main.overview.hide();
-
-            return Clutter.EVENT_STOP;
-        }
-
-        return Clutter.EVENT_PROPAGATE;
-    }
-
     _makeWindowThumbnail() {
         let [buttonX, buttonY] = this.get_transformed_position();
 
@@ -244,6 +218,33 @@ class TaskButton extends PanelMenu.Button {
         }
     }
 
+    _onStyleChanged() {
+        // withdraw -minimum-hpadding change of original PanelMenu.Button function
+        // needed for the width-animation on destroy to not step at the end
+    }
+
+    _onClick(event) {
+        this._removeWindowThumbnail();
+
+        if (event.get_button() == Clutter.BUTTON_PRIMARY) {
+            this.menu.close();
+
+            if (this._window.has_focus()) {
+                if (this._window.can_minimize() && !Main.overview.visible)
+                    this._window.minimize();
+            } else {
+                this._window.activate(global.get_current_time());
+                this._window.focus(global.get_current_time());
+            }
+
+            Main.overview.hide();
+
+            return Clutter.EVENT_STOP;
+        }
+
+        return Clutter.EVENT_PROPAGATE;
+    }
+
     _onHover() {
         if (!this._window)
             return;
@@ -273,7 +274,7 @@ class TaskButton extends PanelMenu.Button {
             });
         } else {
             this._box.ease({
-                opacity: BUTTON_UNFOCUSED_OPACITY,
+                opacity: UNFOCUSED_OPACITY,
                 duration: ANIMATION_TIME,
                 mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             });
@@ -281,8 +282,8 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _updateTitle() {
-        this._label.remove_all_transitions();
         if (this._label.text) {
+            this._label.remove_all_transitions();
             this._label.ease({
                 opacity: 0,
                 duration: ANIMATION_TIME,
