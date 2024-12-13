@@ -26,7 +26,7 @@ const UNFOCUSED_OPACITY = 128; // 0...255
 const WindowThumbnail = GObject.registerClass(
 class WindowThumbnail extends Shell.WindowPreview {
     _init(window) {
-        super._init()
+        super._init({reactive: true, style_class: 'thumbnail-window'});
 
         this._window = window;
         this._windowActor = this._window.get_compositor_private();
@@ -35,7 +35,6 @@ class WindowThumbnail extends Shell.WindowPreview {
 
         let windowContainer = new Clutter.Actor();
         this.window_container = windowContainer;
-
 
         windowContainer.layout_manager = new Shell.WindowPreviewLayout();
         windowContainer.layout_manager.add_window(this._window);
@@ -176,8 +175,7 @@ class TaskButton extends PanelMenu.Button {
         let scale = Math.min(THUMBNAIL_SCALE_FACTOR, scaleThreshold);
         this._thumbnail.set_size(this._thumbnail.width * scale, this._thumbnail.height * scale);
 
-        this._thumbnail.x = buttonX;
-        this._thumbnail.y = buttonY + Main.panel.height + THUMBNAIL_Y_OFFSET;
+        this._thumbnail.set_position(buttonX, buttonY + Main.panel.height + THUMBNAIL_Y_OFFSET);
 
         this._thumbnail.set_opacity(0);
         this._thumbnail.set_scale(0, 0);
