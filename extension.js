@@ -26,13 +26,13 @@ const UNFOCUSED_OPACITY = 128; // 0...255
 const WindowThumbnail = GObject.registerClass(
 class WindowThumbnail extends Shell.WindowPreview {
     _init(window) {
-        super._init({reactive: true, style_class: 'thumbnail-window'});
+        super._init({style_class: 'thumbnail-window'});
 
         this._window = window;
         this._windowActor = this._window.get_compositor_private();
         if (!this._windowActor)
             return;
-
+		
         let windowContainer = new Clutter.Actor();
         this.window_container = windowContainer;
 
@@ -70,7 +70,6 @@ class TaskButton extends PanelMenu.Button {
         super._init();
 
         this._window = window;
-        this._windowActor = this._window.get_compositor_private();
         this._workspaceIndex = this._window.get_workspace().index();
 
         this.add_style_class_name('window-button');
@@ -233,6 +232,18 @@ class TaskButton extends PanelMenu.Button {
             } else {
                 this._window.activate(global.get_current_time());
                 this._window.focus(global.get_current_time());
+            }
+
+            Main.overview.hide();
+
+            return Clutter.EVENT_STOP;
+        }
+
+        if (event.get_button() == Clutter.BUTTON_MIDDLE) {
+            this.menu.close();
+
+            if (this._app.can_open_new_window()) {
+                this._app.open_new_window(-1);
             }
 
             Main.overview.hide();
