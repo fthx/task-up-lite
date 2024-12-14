@@ -18,8 +18,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 const ANIMATION_TIME = 200;
 const THUMBNAIL_RAISE_DELAY = 500; // ms
-const THUMBNAIL_SCALE_FACTOR = 0.5; // 0...1
-const THUMBNAIL_MAX_WIDTH_FACTOR = 0.25; // 0...1
+const THUMBNAIL_SCALE_FACTOR = 1; // 0...1
+const THUMBNAIL_MAX_WIDTH_FACTOR = 0.5; // 0...1
 const THUMBNAIL_Y_OFFSET = 6; // px
 const UNFOCUSED_OPACITY = 128; // 0...255
 
@@ -32,7 +32,7 @@ class WindowThumbnail extends Shell.WindowPreview {
         this._windowActor = this._window.get_compositor_private();
         if (!this._windowActor)
             return;
-		
+
         let windowContainer = new Clutter.Actor();
         this.window_container = windowContainer;
 
@@ -171,8 +171,8 @@ class TaskButton extends PanelMenu.Button {
         Main.uiGroup.add_child(this._thumbnail);
 
         let scaleThreshold = THUMBNAIL_MAX_WIDTH_FACTOR * Main.panel.width / this._thumbnail.width;
-        let scale = Math.min(THUMBNAIL_SCALE_FACTOR, scaleThreshold);
-        this._thumbnail.set_size(this._thumbnail.width * scale, this._thumbnail.height * scale);
+        let scaleFactor = Math.min(THUMBNAIL_SCALE_FACTOR, scaleThreshold);
+        this._thumbnail.set_size(this._thumbnail.width * scaleFactor, this._thumbnail.height * scaleFactor);
 
         this._thumbnail.set_position(buttonX, buttonY + Main.panel.height + THUMBNAIL_Y_OFFSET);
 
