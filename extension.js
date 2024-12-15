@@ -221,6 +221,7 @@ class TaskButton extends PanelMenu.Button {
     }
 
     _onClick(event) {
+        this._removeRaiseWindowThumbnailTimeout();
         this._removeWindowThumbnail();
 
         if (event.get_button() == Clutter.BUTTON_PRIMARY) {
@@ -363,10 +364,11 @@ class TaskBar extends GObject.Object {
     }
 
     _makeTaskbar() {
-        this._moveDate(true);
-        this._movePlacesMenu(true);
-
         this._makeTaskbarTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._moveDate(true);
+            this._movePlacesMenu(true);
+            this._moveWorkspaceIndicator(true);
+
             let workspacesNumber = global.workspace_manager.n_workspaces;
 
             for (let workspaceIndex = 0; workspaceIndex < workspacesNumber; workspaceIndex++) {
@@ -379,6 +381,32 @@ class TaskBar extends GObject.Object {
 
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    _moveWorkspaceIndicator(active) {
+        let workspaceIndicator = Main.panel.statusArea['workspace-indicator'];
+        if (!workspaceIndicator)
+            return;
+
+        let workspaceIndicatorBin = workspaceIndicator.get_parent();
+
+        if (active) {
+            if (!Main.panel._rightBox.get_children().includes(workspaceIndicatorBin))
+                return;
+
+            Main.panel.statusArea['activities'].hide()
+
+            Main.panel._rightBox.remove_child(workspaceIndicatorBin);
+            Main.panel._leftBox.insert_child_at_index(workspaceIndicatorBin, -1);
+        } else {
+            if (!Main.panel._leftBox.get_children().includes(workspaceIndicatorBin))
+                return;
+
+            Main.panel.statusArea['activities'].show()
+
+            Main.panel._leftBox.remove_child(workspaceIndicatorBin);
+            Main.panel._rightBox.add_child(workspaceIndicatorBin);
+        }
     }
 
     _movePlacesMenu(active) {
@@ -435,16 +463,18 @@ class TaskBar extends GObject.Object {
     _destroy() {
         this._disconnectSignals();
 
-        if (this._makeTaskbarTimeout) {
-            GLib.Source.remove(this._makeTaskbarTimeout);
-            this._makeTaskbarTimeout = null;
-        }
-
         this._destroyTaskbar();
 
-        Main.panel._leftBox.remove_style_class_name('leftbox-reduced-padding');
-        this._movePlacesMenu(false);
-        this._moveDate(false);
+        this._makeTaskbarTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._moveWorkspaceIndicator(false);
+            this._movePlacesMenu(false);
+            this._moveDate(false);
+
+            GLib.Source.remove(this._makeTaskbarTimeout);
+            this._makeTaskbarTimeout = null;
+
+            return GLib.SOURCE_REMOVE;
+        });
     }
 });
 
