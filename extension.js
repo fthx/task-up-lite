@@ -352,6 +352,11 @@ class TaskBar extends GObject.Object {
     }
 
     _destroyTaskbar() {
+        if (this._makeTaskbarTimeout) {
+            GLib.Source.remove(this._makeTaskbarTimeout);
+            this._makeTaskbarTimeout = null;
+        }
+
         for (let bin of Main.panel._leftBox.get_children()) {
             let button = bin.first_child;
 
@@ -465,16 +470,9 @@ class TaskBar extends GObject.Object {
 
         this._destroyTaskbar();
 
-        this._makeTaskbarTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
-            this._moveWorkspaceIndicator(false);
-            this._movePlacesMenu(false);
-            this._moveDate(false);
-
-            GLib.Source.remove(this._makeTaskbarTimeout);
-            this._makeTaskbarTimeout = null;
-
-            return GLib.SOURCE_REMOVE;
-        });
+        this._moveWorkspaceIndicator(false);
+        this._movePlacesMenu(false);
+        this._moveDate(false);
     }
 });
 
