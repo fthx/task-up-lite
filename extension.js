@@ -70,7 +70,6 @@ class TaskButton extends PanelMenu.Button {
         super._init();
 
         this._window = window;
-        this._workspaceIndex = this._window.get_workspace().index();
 
         this.add_style_class_name('window-button');
         this._makeButtonBox();
@@ -364,8 +363,9 @@ class TaskBar extends GObject.Object {
     }
 
     _makeTaskbar() {
+        this._moveDate(true);
+
         this._makeTaskbarTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
-            this._moveDate(true);
             this._movePlacesMenu(true);
             this._moveWorkspaceIndicator(true);
 
